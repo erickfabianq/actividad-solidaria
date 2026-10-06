@@ -26,7 +26,7 @@
 
 <section class="panel hidden" id="register">
 <h2 class="panel-title">REGISTRA TU PEDIDO</h2>
-<div class="field"><label for="name">Nombre y apellido</label><input id="name" type="text" autocomplete="name" placeholder="Ej.: Erick Fabián"></div>
+<div class="field"><label for="name">Nombre y apellido</label><input id="name" type="text" autocomplete="name" placeholder="Ej.: Erick Quispe"></div>
 <div class="field"><label>¿Qué deseas pedir?</label><div class="order-choices"><div class="order-choice"><div class="order-label">🐥 POLLADA</div><div class="qty"><button type="button" onclick="changeQty('pollada',-1)">−</button><span class="qty-value" id="polladaQty">0</span><button type="button" onclick="changeQty('pollada',1)">+</button></div></div><div class="order-choice"><div class="order-label">🐷 CHULETADA</div><div class="qty"><button type="button" onclick="changeQty('chuletada',-1)">−</button><span class="qty-value" id="chuletadaQty">0</span><button type="button" onclick="changeQty('chuletada',1)">+</button></div></div></div></div>
 <div class="notice">Si necesitas coordinar algo adicional o algún detalle especial, puedes hacerlo a través de WhatsApp después de registrar tu pedido.</div>
 <div id="registerError" class="error"></div>
@@ -37,7 +37,7 @@
 
 <section class="panel hidden" id="lookup">
 <h2 class="panel-title">CONSULTA TU PEDIDO</h2>
-<div class="field"><label for="lookupInput">Nombre o código</label><input id="lookupInput" type="search" placeholder="Ej.: Erick Fabián o PO-482"></div>
+<div class="field"><label for="lookupInput">Nombre o código</label><input id="lookupInput" type="search" placeholder="Ej.: Erick Quispe o PO-EQ-47"></div>
 <button class="primary" style="width:100%" onclick="lookupOrder()">BUSCAR PEDIDO</button>
 <div id="lookupError" class="error"></div><div class="lookup-result" id="lookupResult"></div>
 <button style="width:100%;margin-top:14px" onclick="showSection('menuPanel')">← VOLVER</button>
@@ -62,25 +62,152 @@ function getOrders(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[
 function saveOrders(o){localStorage.setItem(STORAGE_KEY,JSON.stringify(o))}
 function showSection(id){document.querySelectorAll('#register,#lookup').forEach(e=>e.classList.add('hidden'));if(id==='menuPanel'){document.getElementById('menuPanel').scrollIntoView({behavior:'smooth'});return}document.getElementById(id).classList.remove('hidden');document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'})}
 function changeQty(type,n){quantities[type]=Math.max(0,Math.min(20,quantities[type]+n));document.getElementById(type+'Qty').textContent=quantities[type]}
-function makeCode(prefix,codes){let c;do{c=prefix+'-'+Math.floor(100+Math.random()*900)}while(codes.includes(c));return c}
 function normalize(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim()}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+function cleanName(s){return s.replace(/\s+/g,' ').trim()}
+
+async function copyCode(code){
+  try{
+    await navigator.clipboard.writeText(code);
+    const button=event.currentTarget;
+    const original=button.textContent;
+    button.textContent='✅ CÓDIGO COPIADO';
+    setTimeout(()=>button.textContent=original,1800);
+  }catch(err){
+    const area=document.createElement('textarea');
+    area.value=code;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  }
+}
+
 async function registerOrder(){
-const name=document.getElementById('name').value.trim(),poll=quantities.pollada>0,chu=quantities.chuletada>0,pollQty=quantities.pollada,chuQty=quantities.chuletada,error=document.getElementById('registerError'),result=document.getElementById('registerResult');
-error.textContent='';result.classList.remove('show');
+const nameRaw=document.getElementById('name').value.trim(),
+      name=cleanName(nameRaw),
+      poll=quantities.pollada>0,
+      chu=quantities.chuletada>0,
+      pollQty=quantities.pollada,
+      chuQty=quantities.chuletada,
+      error=document.getElementById('registerError'),
+      result=document.getElementById('registerResult');
+
+error.textContent='';
+result.classList.remove('show');
+
 if(!name){error.textContent='⚠️ Escribe tu nombre y apellido.';return}
+if(name.split(' ').length<2){error.textContent='⚠️ Escribe al menos tu nombre y un apellido.';return}
 if(!poll&&!chu){error.textContent='⚠️ Selecciona al menos una unidad de pollada o chuletada.';return}
-const orders=getOrders(),codes=orders.flatMap(o=>o.codes||[]),o={id:Date.now().toString(36),name,quantity:Math.max(pollQty,chuQty),pollada:pollQty,chuletada:chuQty,codes:[],notes:'',part:'',status:'Registrado',createdAt:new Date().toISOString()};
-if(poll)o.codes.push(makeCode('PO',codes));if(chu)o.codes.push(makeCode('CH',codes));
-const codeText=o.codes.join(' / '),items=[];if(poll)items.push('🐥 Pollada × '+pollQty);if(chu)items.push('🐷 Chuletada × '+chuQty);
+if(pollQty>10||chuQty>10){error.textContent='⚠️ Puedes registrar hasta 10 unidades de cada producto por pedido.';return}
+
+const items=[];
+if(poll)items.push('🐥 Pollada × '+pollQty);
+if(chu)items.push('🐷 Chuletada × '+chuQty);
+
 try{
-await fetch(API_URL,{method:'POST',mode:'no-cors',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({codigo:codeText,nombre:name,pollada:pollQty,chuletada:chuQty,detalle:'',estado:'Registrado'})});
-}catch(err){error.textContent='⚠️ No pudimos guardar tu pedido. Inténtalo nuevamente.';console.error(err);return}
-orders.push(o);saveOrders(orders);updateProgress();
-const waItems=[];if(poll)waItems.push('🐥 Pollada × '+pollQty);if(chu)waItems.push('🐷 Chuletada × '+chuQty);const waCodes=o.codes.length===1?'Código: ':'Códigos: ';const waText=encodeURIComponent('Hola Erick, acabo de registrar mi pedido de Actividad Solidaria.\n\nMi pedido:\n'+waItems.join('\n')+'\n'+waCodes+codeText);const link=WHATSAPP_NUMBER?'https://wa.me/'+WHATSAPP_NUMBER+'?text='+waText:'https://wa.me/?text='+waText;
-result.innerHTML='<strong>🎉 ¡PEDIDO REGISTRADO!</strong><p>'+esc(name)+'</p><p>'+items.join('<br>')+'</p><div class="code">'+codeText+'</div><p>Guarda este código para consultar tu pedido.</p><button class="primary whatsapp" onclick="window.open(\''+link+'\',\'_blank\')">💬 ESCRIBIR POR WHATSAPP</button>';result.classList.add('show');
-document.getElementById('name').value='';quantities={pollada:0,chuletada:0};document.getElementById('polladaQty').textContent='0';document.getElementById('chuletadaQty').textContent='0';result.scrollIntoView({behavior:'smooth',block:'center'})}
-async function lookupOrder(){const q=normalize(document.getElementById('lookupInput').value),error=document.getElementById('lookupError'),result=document.getElementById('lookupResult');error.textContent='';result.classList.remove('show');if(!q){error.textContent='⚠️ Escribe tu nombre o código.';return}error.textContent='⏳ Consultando tu pedido...';try{const r=await fetch(API_URL+'?buscar='+encodeURIComponent(q)+'&t='+Date.now());const d=await r.json();if(!d.ok)throw new Error(d.error||'No se pudo consultar el pedido');const matches=d.orders||[];error.textContent='';if(!matches.length){error.textContent='No encontramos un pedido con esos datos.';return}result.innerHTML=matches.map(o=>{const i=[];if(Number(o.pollada))i.push('🐥 Pollada × '+Number(o.pollada));if(Number(o.chuletada))i.push('🐷 Chuletada × '+Number(o.chuletada));const code=esc(o.codigo||'—');return '<strong>📦 PEDIDO ENCONTRADO</strong><p>'+esc(o.nombre||'')+'</p><p>'+i.join('<br>')+'</p><p><strong>Código:</strong> '+code+'</p><p><strong>Estado:</strong> '+esc(o.estado||'Registrado')+'</p>'+(o.fecha?'<p><strong>Fecha:</strong> '+esc(o.fecha)+'</p>':'')}).join('<hr>');result.classList.add('show')}catch(err){error.textContent='⚠️ No pudimos consultar el pedido. Inténtalo nuevamente.';console.error(err)}}
+  const response=await fetch(API_URL,{
+    method:'POST',
+    mode:'cors',
+    redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({
+      nombre:name,
+      pollada:pollQty,
+      chuletada:chuQty,
+      detalle:'',
+      estado:'Registrado'
+    })
+  });
+
+  const data=await response.json();
+  if(!data.ok||!data.codigo)throw new Error(data.error||'No se pudo obtener el código del pedido.');
+
+  const codeText=data.codigo;
+  const o={
+    id:Date.now().toString(36),
+    name:name,
+    quantity:Math.max(pollQty,chuQty),
+    pollada:pollQty,
+    chuletada:chuQty,
+    codes:[codeText],
+    notes:'',
+    part:'',
+    status:'Registrado',
+    createdAt:new Date().toISOString()
+  };
+
+  const orders=getOrders();
+  orders.push(o);
+  saveOrders(orders);
+  updateProgress();
+
+  const waItems=[];
+  if(poll)waItems.push('🐥 Pollada × '+pollQty);
+  if(chu)waItems.push('🐷 Chuletada × '+chuQty);
+  const waText=encodeURIComponent(
+    'Hola Erick, acabo de registrar mi pedido de Actividad Solidaria.\n\nMi pedido:\n'+
+    waItems.join('\n')+
+    '\nCódigo: '+codeText
+  );
+  const link=WHATSAPP_NUMBER
+    ?'https://wa.me/'+WHATSAPP_NUMBER+'?text='+waText
+    :'https://wa.me/?text='+waText;
+
+  result.innerHTML='<strong>🎉 ¡PEDIDO REGISTRADO!</strong><p>'+esc(name)+'</p><p>'+items.join('<br>')+'</p><div class="code" id="registeredCode">'+esc(codeText)+'</div><p>Guarda este código para consultar tu pedido.</p><button class="primary" style="width:100%;margin-top:8px" onclick="copyCode(\''+codeText+'\')">📋 COPIAR CÓDIGO</button><button class="primary whatsapp" onclick="window.open(\''+link+'\',\'_blank\')">💬 ESCRIBIR POR WHATSAPP</button>';
+  result.classList.add('show');
+  document.getElementById('name').value='';
+  quantities={pollada:0,chuletada:0};
+  document.getElementById('polladaQty').textContent='0';
+  document.getElementById('chuletadaQty').textContent='0';
+  result.scrollIntoView({behavior:'smooth',block:'center'});
+}catch(err){
+  error.textContent='⚠️ No pudimos guardar tu pedido. Inténtalo nuevamente.';
+  console.error(err);
+}}
+async function lookupOrder(){
+const q=normalize(document.getElementById('lookupInput').value),
+      error=document.getElementById('lookupError'),
+      result=document.getElementById('lookupResult');
+
+error.textContent='';
+result.classList.remove('show');
+
+if(!q){error.textContent='⚠️ Escribe tu nombre completo o código.';return}
+
+if(!q.includes('-') && q.split(/\s+/).length<2){
+  error.textContent='⚠️ Para proteger los pedidos, escribe tu nombre completo o tu código.';
+  return;
+}
+
+error.textContent='⏳ Consultando tu pedido...';
+
+try{
+  const r=await fetch(API_URL+'?buscar='+encodeURIComponent(q)+'&t='+Date.now());
+  const d=await r.json();
+  if(!d.ok)throw new Error(d.error||'No se pudo consultar el pedido');
+
+  const matches=d.orders||[];
+  error.textContent='';
+
+  if(!matches.length){
+    error.textContent='No encontramos un pedido con esos datos.';
+    return;
+  }
+
+  result.innerHTML=matches.map(o=>{
+    const i=[];
+    if(Number(o.pollada))i.push('🐥 Pollada × '+Number(o.pollada));
+    if(Number(o.chuletada))i.push('🐷 Chuletada × '+Number(o.chuletada));
+    const code=esc(o.codigo||'—');
+    return '<strong>📦 PEDIDO ENCONTRADO</strong><p>'+esc(o.nombre||'')+'</p><p>'+i.join('<br>')+'</p><p><strong>Código:</strong> '+code+'</p><p><strong>Estado:</strong> '+esc(o.estado||'Registrado')+'</p>'+(o.fecha?'<p><strong>Fecha:</strong> '+esc(o.fecha)+'</p>':'')
+  }).join('<hr>');
+
+  result.classList.add('show');
+}catch(err){
+  error.textContent='⚠️ No pudimos consultar el pedido. Inténtalo nuevamente.';
+  console.error(err);
+}}
 async function updateProgress(){const message=document.getElementById('battleMessage');message.textContent='⏳ ACTUALIZANDO EL MARCADOR...';try{const r=await fetch(API_URL+'?t='+Date.now());const d=await r.json();if(!d.ok)throw new Error(d.error||'No se pudo consultar el marcador');const p=Number(d.pollada)||0,c=Number(d.chuletada)||0,t=p+c,left=t?p/t*100:50,right=t?c/t*100:50;document.getElementById('fillLeft').style.width=left+'%';document.getElementById('fillRight').style.width=right+'%';let m='⚔️ ¡LA BATALLA ESTÁ POR COMENZAR!';if(t){if(p===c)m='⚔️ ¡LA BATALLA ESTÁ MUY PAREJA!';else if(p>c)m=p-c<=2?'🐥 ¡EL POLLITO TOMA LA DELANTERA!':'🐥 ¡TEAM POLLITO VA GANANDO!';else m=c-p<=2?'🐷 ¡TEAM CHANCHITO CONTRAATACA!':'🐷 ¡TEAM CHANCHITO VA GANANDO!'}message.textContent=m}catch(err){message.textContent='⚠️ NO SE PUDO ACTUALIZAR EL MARCADOR';console.error(err)}}
 updateProgress();
 setInterval(updateProgress,30000);
