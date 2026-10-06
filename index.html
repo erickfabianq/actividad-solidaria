@@ -109,6 +109,9 @@ if(poll)items.push('🐥 Pollada × '+pollQty);
 if(chu)items.push('🐷 Chuletada × '+chuQty);
 
 try{
+  error.textContent='⏳ Guardando tu pedido...';
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),15000);
   const response=await fetch(API_URL,{
     method:'POST',
     mode:'cors',
@@ -120,11 +123,17 @@ try{
       chuletada:chuQty,
       detalle:whatsapp,
       estado:'Registrado'
-    })
+    }),
+    signal:controller.signal
   });
+  clearTimeout(timeout);
 
-  const data=await response.json();
+  const raw=await response.text();
+  let data;
+  try{data=JSON.parse(raw)}catch(parseErr){throw new Error('Respuesta no válida del servidor: '+raw.slice(0,120))}
+  if(!response.ok)throw new Error('El servidor respondió con estado '+response.status+'.');
   if(!data.ok||!data.codigo)throw new Error(data.error||'No se pudo obtener el código del pedido.');
+  error.textContent='';
 
   const codeText=data.codigo;
   const o={
@@ -166,7 +175,9 @@ try{
   document.getElementById('chuletadaQty').textContent='0';
   result.scrollIntoView({behavior:'smooth',block:'center'});
 }catch(err){
-  error.textContent='⚠️ No pudimos guardar tu pedido. Inténtalo nuevamente.';
+  const detail=err&&err.name==='AbortError'?'La respuesta tardó demasiado.':(err&&err.message?err.message:'Error de conexión.');
+  error.textContent='⚠️ No pudimos guardar tu pedido. '+detail;
+  result.classList.remove('show');
   console.error(err);
 }}
 async function lookupOrder(){
