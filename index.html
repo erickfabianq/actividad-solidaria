@@ -177,8 +177,10 @@ try{
   document.getElementById('chuletadaQty').textContent='0';
   result.scrollIntoView({behavior:'smooth',block:'center'});
 }catch(err){
-  const detail=err&&err.name==='AbortError'?'La respuesta tardó demasiado.':(err&&err.message?err.message:'Error de conexión.');
-  error.textContent='⚠️ No pudimos guardar tu pedido. '+detail;
+  const detail=err&&err.name==='AbortError'
+    ?'La confirmación está tardando más de lo esperado. Tu pedido podría haberse registrado correctamente. Por favor, no vuelvas a enviarlo todavía.'
+    :(err&&err.message?err.message:'Error de conexión.');
+  error.textContent='⚠️ '+detail;
   result.classList.remove('show');
   console.error(err);
 }}
