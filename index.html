@@ -74,9 +74,7 @@ const orders=getOrders(),codes=orders.flatMap(o=>o.codes||[]),o={id:Date.now().t
 if(poll)o.codes.push(makeCode('PO',codes));if(chu)o.codes.push(makeCode('CH',codes));
 const codeText=o.codes.join(' / '),items=[];if(poll)items.push('🐥 Pollada × '+pollQty);if(chu)items.push('🐷 Chuletada × '+chuQty);
 try{
-const response=await fetch(API_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({codigo:codeText,nombre:name,pollada:pollQty,chuletada:chuQty,detalle:'',estado:'Registrado'})});
-const data=await response.json();
-if(!data.ok)throw new Error(data.error||'No se pudo registrar el pedido.');
+await fetch(API_URL,{method:'POST',mode:'no-cors',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({codigo:codeText,nombre:name,pollada:pollQty,chuletada:chuQty,detalle:'',estado:'Registrado'})});
 }catch(err){error.textContent='⚠️ No pudimos guardar tu pedido. Inténtalo nuevamente.';console.error(err);return}
 orders.push(o);saveOrders(orders);updateProgress();
 const waItems=[];if(poll)waItems.push('🐥 Pollada × '+pollQty);if(chu)waItems.push('🐷 Chuletada × '+chuQty);const waCodes=o.codes.length===1?'Código: ':'Códigos: ';const waText=encodeURIComponent('Hola Erick, acabo de registrar mi pedido de Actividad Solidaria.\n\nMi pedido:\n'+waItems.join('\n')+'\n'+waCodes+codeText);const link=WHATSAPP_NUMBER?'https://wa.me/'+WHATSAPP_NUMBER+'?text='+waText:'https://wa.me/?text='+waText;
