@@ -63,7 +63,7 @@ function saveOrders(o){localStorage.setItem(STORAGE_KEY,JSON.stringify(o))}
 function showSection(id){document.querySelectorAll('#register,#lookup').forEach(e=>e.classList.add('hidden'));if(id==='menuPanel'){document.getElementById('menuPanel').scrollIntoView({behavior:'smooth'});return}document.getElementById(id).classList.remove('hidden');document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'})}
 function changeQty(type,n){quantities[type]=Math.max(0,Math.min(20,quantities[type]+n));document.getElementById(type+'Qty').textContent=quantities[type]}
 function normalize(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim()}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#039;')}
 function cleanName(s){return s.replace(/\s+/g,' ').trim()}
 
 async function copyCode(code){
@@ -154,7 +154,7 @@ try{
     ?'https://wa.me/'+WHATSAPP_NUMBER+'?text='+waText
     :'https://wa.me/?text='+waText;
 
-  result.innerHTML='<strong>🎉 ¡PEDIDO REGISTRADO!</strong><p>'+esc(name)+'</p><p>'+items.join('<br>')+'</p><div class="code" id="registeredCode">'+esc(codeText)+'</div><p>Guarda este código para consultar tu pedido.</p><div class="notice">Si tienes alguna indicación especial sobre tu pedido, como solicitarlo sin arroz, escríbeme directamente por WhatsApp.</div><button class="primary" style="width:100%;margin-top:8px" onclick="copyCode(\''+codeText+'\')">📋 COPIAR CÓDIGO</button><button class="primary whatsapp" onclick="window.open(\''+link+'\',\'_blank\')">💬 ESCRIBIR POR WHATSAPP</button>';
+  result.innerHTML='<strong>🎉 ¡PEDIDO REGISTRADO!</strong><p>'+esc(name)+'</p><p>'+items.join('<br>')+'</p><div class="code" id="registeredCode">'+esc(codeText)+'</div><p>Guarda este código para consultar tu pedido.</p><div class="notice">Si tienes alguna indicación especial sobre tu pedido, como solicitarlo sin arroz, por favor escríbeme directamente por WhatsApp.</div><button class="primary" style="width:100%;margin-top:8px" onclick="copyCode(\''+codeText+'\')">📋 COPIAR CÓDIGO</button><button class="primary whatsapp" onclick="window.open(\''+link+'\',\'_blank\')">💚 WhatsApp Erick</button>';
   result.classList.add('show');
   document.getElementById('name').value='';
   quantities={pollada:0,chuletada:0};
