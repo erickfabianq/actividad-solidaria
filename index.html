@@ -132,26 +132,38 @@ try{
 
   const raw=await response.text();
   let data=null;
-  try{data=JSON.parse(raw)}catch(parseErr){}
+  try{data=JSON.parse(raw)}catch(e){}
 
-  if(!response.ok){
-    throw new Error('El servidor respondió con estado '+response.status+'.');
+  if(!response.ok)throw new Error('El servidor respondió con estado '+response.status+'.');
+
+  if(!data||!data.ok||!data.codigo){
+    error.textContent='⏳ Confirmando tu pedido...';
+    let confirmado=null;
+
+    for(let intento=0;intento<3&&!confirmado;intento++){
+      if(intento)await new Promise(resolve=>setTimeout(resolve,1500));
+      try{
+        const cr=await fetch(API_URL+'?buscar='+encodeURIComponent(name)+'&t='+Date.now());
+        if(!cr.ok)continue;
+        const ct=await cr.text();
+        let cd=null;
+        try{cd=JSON.parse(ct)}catch(e){continue}
+        const matches=Array.isArray(cd.orders)?cd.orders:[];
+        confirmado=matches.find(o=>
+          normalize(String(o.nombre||''))===normalize(name)&&
+          Number(o.pollada||0)===pollQty&&
+          Number(o.chuletada||0)===chuQty&&
+          String(o.detalle||'')===whatsapp
+        )||null;
+      }catch(e){console.warn(e)}
+    }
+
+    if(!confirmado)throw new Error('No pudimos confirmar el pedido todavía. Espera unos segundos y consulta tu pedido antes de volver a registrarlo.');
+    data={ok:true,codigo:String(confirmado.codigo||'')};
   }
 
-  /*
-   * Google Apps Script puede guardar el pedido correctamente y, en algunas
-   * ocasiones, devolver HTML en lugar del JSON esperado. En ese caso no
-   * debemos mostrar un error que invite a repetir el pedido, porque podría
-   * generar duplicados.
-   */
-  if(!data || !data.ok || !data.codigo){
-    error.textContent='⚠️ Tu pedido fue enviado. La confirmación del código está tardando más de lo esperado. Por favor, no vuelvas a enviarlo todavía. Puedes consultar tu pedido en “YA TENGO UN PEDIDO” en unos segundos.';
-    result.classList.remove('show');
-    return;
-  }
-
+  if(!data.codigo)throw new Error('No se pudo obtener el código del pedido.');
   error.textContent='';
-
   const codeText=data.codigo;
   const o={
     id:Date.now().toString(36),
