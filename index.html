@@ -26,7 +26,7 @@
 
 <section class="panel hidden" id="register">
 <h2 class="panel-title">REGISTRA TU PEDIDO</h2>
-<div class="field"><label for="name">Nombre y apellido</label><input id="name" type="text" autocomplete="name" placeholder="Ej.: Erick Quispe"></div>
+<div class="field"><label for="name">Nombre y apellido</label><input id="name" type="text" autocomplete="name" placeholder="Ej.: Erick Fabián"></div>
 <div class="field"><label for="whatsapp">📱 WhatsApp</label><input id="whatsapp" type="tel" inputmode="numeric" autocomplete="tel" maxlength="9" pattern="[0-9]{9}" placeholder="Ej.: 960521119" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,9)"></div>
 <div class="field"><label>¿Qué deseas pedir?</label><div class="order-choices"><div class="order-choice"><div class="order-label">🐥 TEAM POLLITO<small>Un cuarto de pollada + papas + arroz + ají</small></div><div class="qty"><button type="button" onclick="changeQty('pollada',-1)">−</button><span class="qty-value" id="polladaQty">0</span><button type="button" onclick="changeQty('pollada',1)">+</button></div></div><div class="order-choice"><div class="order-label">🐷 TEAM CHANCHITO<small>Un cuarto de chuletada + papas + mote + ají</small></div><div class="qty"><button type="button" onclick="changeQty('chuletada',-1)">−</button><span class="qty-value" id="chuletadaQty">0</span><button type="button" onclick="changeQty('chuletada',1)">+</button></div></div></div></div>
 <div class="notice">Si necesitas coordinar algo adicional o algún detalle especial, puedes hacerlo a través de WhatsApp después de registrar tu pedido.</div>
