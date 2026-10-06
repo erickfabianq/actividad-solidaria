@@ -37,7 +37,7 @@
 
 <section class="panel hidden" id="lookup">
 <h2 class="panel-title">CONSULTA TU PEDIDO</h2>
-<div class="field"><label for="lookupInput">Nombre o código</label><input id="lookupInput" type="search" placeholder="Ej.: Eric Fabián o PO-482"></div>
+<div class="field"><label for="lookupInput">Nombre o código</label><input id="lookupInput" type="search" placeholder="Ej.: Erick Fabián o PO-482"></div>
 <button class="primary" style="width:100%" onclick="lookupOrder()">BUSCAR PEDIDO</button>
 <div id="lookupError" class="error"></div><div class="lookup-result" id="lookupResult"></div>
 <button style="width:100%;margin-top:14px" onclick="showSection('menuPanel')">← VOLVER</button>
@@ -55,7 +55,8 @@
 
 <script>
 const STORAGE_KEY='actividadSolidariaPedidos_v01';
-const WHATSAPP_NUMBER='51960521119'; // Colocaremos el número definitivo antes de publicar.
+const API_URL='https://script.google.com/macros/s/AKfycbwJNdw8oFtDXwqN2CdI6n0Rcx7hN9yvRYLK9r5zPdM5kFz93A1e5BlU5TGH4_eUu8zRxw/exec';
+const WHATSAPP_NUMBER='51960521119';
 let quantities={pollada:0,chuletada:0};
 function getOrders(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[]}catch{return[]}}
 function saveOrders(o){localStorage.setItem(STORAGE_KEY,JSON.stringify(o))}
@@ -64,12 +65,21 @@ function changeQty(type,n){quantities[type]=Math.max(0,Math.min(20,quantities[ty
 function makeCode(prefix,codes){let c;do{c=prefix+'-'+Math.floor(100+Math.random()*900)}while(codes.includes(c));return c}
 function normalize(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim()}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
-function registerOrder(){
-const name=document.getElementById('name').value.trim(),poll=quantities.pollada>0,chu=quantities.chuletada>0,pollQty=quantities.pollada,chuQty=quantities.chuletada,error=document.getElementById('registerError'),result=document.getElementById('registerResult');error.textContent='';result.classList.remove('show');
-if(!name){error.textContent='⚠️ Escribe tu nombre y apellido.';return} if(!poll&&!chu){error.textContent='⚠️ Selecciona al menos una unidad de pollada o chuletada.';return}
+async function registerOrder(){
+const name=document.getElementById('name').value.trim(),poll=quantities.pollada>0,chu=quantities.chuletada>0,pollQty=quantities.pollada,chuQty=quantities.chuletada,error=document.getElementById('registerError'),result=document.getElementById('registerResult');
+error.textContent='';result.classList.remove('show');
+if(!name){error.textContent='⚠️ Escribe tu nombre y apellido.';return}
+if(!poll&&!chu){error.textContent='⚠️ Selecciona al menos una unidad de pollada o chuletada.';return}
 const orders=getOrders(),codes=orders.flatMap(o=>o.codes||[]),o={id:Date.now().toString(36),name,quantity:Math.max(pollQty,chuQty),pollada:pollQty,chuletada:chuQty,codes:[],notes:'',part:'',status:'Registrado',createdAt:new Date().toISOString()};
-if(poll)o.codes.push(makeCode('PO',codes));if(chu)o.codes.push(makeCode('CH',codes));orders.push(o);saveOrders(orders);updateProgress();
-const codeText=o.codes.join(' / '),items=[];if(poll)items.push('🐥 Pollada × '+pollQty);if(chu)items.push('🐷 Chuletada × '+chuQty);const waText=encodeURIComponent('Hola Erick, acabo de registrar mi pedido de Actividad Solidaria.\n\n'+items.join('\n')+'\nCódigo: '+codeText+'\n\nQuisiera coordinar una indicación especial.');const link=WHATSAPP_NUMBER?'https://wa.me/'+WHATSAPP_NUMBER+'?text='+waText:'https://wa.me/?text='+waText;
+if(poll)o.codes.push(makeCode('PO',codes));if(chu)o.codes.push(makeCode('CH',codes));
+const codeText=o.codes.join(' / '),items=[];if(poll)items.push('🐥 Pollada × '+pollQty);if(chu)items.push('🐷 Chuletada × '+chuQty);
+try{
+const response=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({codigo:codeText,nombre:name,pollada:pollQty,chuletada:chuQty,detalle:'',estado:'Registrado'})});
+const data=await response.json();
+if(!data.ok)throw new Error(data.error||'No se pudo registrar el pedido.');
+}catch(err){error.textContent='⚠️ No pudimos guardar tu pedido. Inténtalo nuevamente.';console.error(err);return}
+orders.push(o);saveOrders(orders);updateProgress();
+const waText=encodeURIComponent('Hola Erick, acabo de registrar mi pedido de Actividad Solidaria.\n\n'+items.join('\n')+'\nCódigo: '+codeText+'\n\nQuisiera coordinar una indicación especial.');const link=WHATSAPP_NUMBER?'https://wa.me/'+WHATSAPP_NUMBER+'?text='+waText:'https://wa.me/?text='+waText;
 result.innerHTML='<strong>🎉 ¡PEDIDO REGISTRADO!</strong><p>'+esc(name)+'</p><p>'+items.join('<br>')+'</p><div class="code">'+codeText+'</div><p>Guarda este código para consultar tu pedido.</p><button class="primary whatsapp" onclick="window.open(\''+link+'\',\'_blank\')">💬 ESCRIBIR POR WHATSAPP</button>';result.classList.add('show');
 document.getElementById('name').value='';quantities={pollada:0,chuletada:0};document.getElementById('polladaQty').textContent='0';document.getElementById('chuletadaQty').textContent='0';result.scrollIntoView({behavior:'smooth',block:'center'})}
 function lookupOrder(){const q=normalize(document.getElementById('lookupInput').value),error=document.getElementById('lookupError'),result=document.getElementById('lookupResult');error.textContent='';result.classList.remove('show');if(!q){error.textContent='⚠️ Escribe tu nombre o código.';return}const matches=getOrders().filter(o=>normalize(o.name).includes(q)||(o.codes||[]).some(c=>normalize(c)===q));if(!matches.length){error.textContent='No encontramos un pedido con esos datos.';return}result.innerHTML=matches.map(o=>{const i=[];if(o.pollada)i.push('🐥 Pollada × '+o.pollada);if(o.chuletada)i.push('🐷 Chuletada × '+o.chuletada);return '<strong>📦 PEDIDO ENCONTRADO</strong><p>'+esc(o.name)+'</p><p>'+i.join('<br>')+'</p><p><strong>Código:</strong> '+o.codes.join(' / ')+'</p><p><strong>Estado:</strong> '+esc(o.status)+'</p>'}).join('<hr>');result.classList.add('show')}
